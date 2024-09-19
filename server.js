@@ -23,15 +23,13 @@ app.post('/get-messages', async (req,res) => {
 				res.status = 200
 				res.json(rows)
 		}
-		
+	})
 })
-})
-
 
 io.on('connection', (socket) => {
 	socket.join(socket.id)
 	socket.on('send-message', async ([user, room, msg]) => {
-		socket.to(room).emit('message', (`${user}: ` + msg))
+		socket.to(room).emit('message', ([user,msg]))
 		const now = new Date();
 		const year = now.getFullYear();
 		const month = ("0" + (now.getMonth() + 1)).slice(-2);
