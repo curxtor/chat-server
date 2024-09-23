@@ -6,6 +6,7 @@ const db = require('./base/base.js')
 const cors = require('cors')
 app.use(cors())
 app.use(express.json())
+
 const io = require('socket.io')(http, {
   cors: {
     origins: ['https://localhost:8080']
@@ -27,8 +28,8 @@ app.post('/get-messages', async (req,res) => {
 })
 
 io.on('connection', (socket) => {
-	socket.join(socket.id)
 	socket.on('send-message', async ([user, room, msg]) => {
+		console.log(io.sockets.adapter.rooms)
 		socket.to(room).emit('message', ([user,msg]))
 		const now = new Date();
 		const year = now.getFullYear();
@@ -40,14 +41,23 @@ io.on('connection', (socket) => {
 		const formatted = `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 		await db.exec(`INSERT INTO messages (user, room, msg, date) VALUES ("${user}", "${room}", "${msg}", "${formatted}")`)
   });
-	socket.on('joinRoom', (room) => {
+	socket.on('joinRoom', async ([room, user]) => {
+		socket.username = user
 		socket.join(room)
+		let users = Array.from(await io.in(`${room}`).fetchSockets())
+		let newUsers = []
+		for (let i=0; i< users.length; i++) newUsers.push(users[i].username)
+		io.in(`${room}`).emit('newConnect', (newUsers))
 	})
-	socket.on('leaveRoom', (room) => {
+	socket.on('leaveRoom', async (room) => {
 		socket.leave(room)
+		let users = Array.from(await io.in(`${room}`).fetchSockets())
+		let newUsers = []
+		for (let i=0; i< users.length; i++) newUsers.push(users[i].username)
+		io.in(`${room}`).emit('deleteConnect', (newUsers))
 	})
 });
 
-http.listen(port, () => {
-	console.log(`Server listening on port ${port}`)
-})
+http.listen(3000, () => {
+        console.log(`Server started at port ${port}`);
+    });
